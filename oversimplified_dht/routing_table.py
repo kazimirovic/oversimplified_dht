@@ -1,10 +1,27 @@
 import typing
+from abc import ABC, abstractmethod
 
 from .node import Node
 from .node_id import NodeId
 
 
-class FlatRoutingTable:
+class AbstractRoutingTable(ABC):
+    @abstractmethod
+    def get_neighbours(self, target_value: NodeId, k=8) -> typing.List[Node]:
+        pass
+
+    @abstractmethod
+    async def add_node(self, new_node: Node, ping_function: typing.Awaitable[bool]):
+        """
+
+        :param new_node:
+        :param ping_function: must return true if node responds, false if it doesn't.
+        :return:
+        """
+        pass
+
+
+class FlatRoutingTable(AbstractRoutingTable):
     """
     This is a very inefficient routing table implementation. It doesn't use buckets as described in bep 0005.
     It doesn't do anything efficiently, actually.
