@@ -7,11 +7,11 @@ from typing import Sequence, Tuple
 from bencode.misc import unpack_compact_peer
 
 from oversimplified_dht.peer_storage import LocalPeerStorage
+from oversimplified_dht.routing_table.table import RoutingTable
 from oversimplified_dht.token_manager import TokenManager
 from .krpc import KRPCProtocol
 from .node import Node, parse_compact_nodes
 from .node_id import NodeId
-from .routing_table import FlatRoutingTable
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -172,7 +172,7 @@ class Router(KRPCProtocol):
         self.node_id = node_id
 
         self.peer_storage = LocalPeerStorage()
-        self.routing_table = FlatRoutingTable(self.node_id)
+        self.routing_table = RoutingTable(self.node_id)
         self.token_manager = TokenManager()
 
     async def send_query_to_node(self, node: Node, method: bytes, args: dict):

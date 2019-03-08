@@ -1,7 +1,7 @@
 OversimplifiedDHT: A somewhat deficient python implementation of the Bittorrent Mainline DHT.
 =============================================================================================
 
-Not suitable for real use. The main focus of the project is research.
+Not suitable for real use. The focus of the project is research.
 
 What works:
 -----------
@@ -15,7 +15,6 @@ Planned features:
 - General compliance with `BEP5 <http://www.bittorrent.org/beps/bep_0005.html>`_
 - (Eventually) `DHT Security extension <http://www.bittorrent.org/beps/bep_0042.html>`_
 
-The current version doesn't use buckets as described in `BEP5 <http://www.bittorrent.org/beps/bep_0005.html>`_, and therefore is very inefficient. 
 
 Usage:
 
