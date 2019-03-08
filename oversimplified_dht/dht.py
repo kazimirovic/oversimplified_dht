@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import typing
+from math import inf
 from typing import Sequence, Tuple
 
 from bencode.misc import unpack_compact_peer
@@ -89,15 +90,7 @@ class Router(KRPCProtocol):
             timeout=timeout
         )
 
-    async def bootstrap(self, bootstrap_nodes: Sequence[Tuple[str, int]] = DEFAULT_BOOTSTRAP_NODES):
-        """
-        Issues find_node messages to closer and closer nodes until it cannot find any closer.
-
-        :param bootstrap_nodes:
-        :return:
-        """
-
-        log.debug('Bootstrap started')
+    async def initial_bootstrap(self, bootstrap_nodes):
         request_args = {
             b'id': bytes(self.node_id),
             b'target': bytes(self.node_id)
@@ -107,16 +100,26 @@ class Router(KRPCProtocol):
             try:
                 response = await asyncio.wait_for(self.send_query(bootstrap_node_address,
                                                                   b'find_node', request_args), timeout=2)
-                node_infos = parse_compact_nodes(response[b'r'][b'nodes'])
+                return parse_compact_nodes(response[b'r'][b'nodes'])
             except asyncio.TimeoutError:
                 log.warning("Bootstrap node %s not responding" % bootstrap_node_address[0])
-            else:
-                log.debug('Bootstrap node %s,%i responded' % bootstrap_node_address)
-                break
         else:
             raise BootStrapError("No given boostrap nodes responded")
 
-        best = NodeId.from_bytes(response[b'r'][b'id']) ^ self.node_id
+    async def bootstrap(self, bootstrap_nodes: Sequence[Tuple[str, int]] = DEFAULT_BOOTSTRAP_NODES):
+        """
+        Issues find_node messages to closer and closer nodes until it cannot find any closer.
+
+        :param bootstrap_nodes:
+        :return:
+        """
+        request_args = {
+            b'id': bytes(self.node_id),
+            b'target': bytes(self.node_id)
+        }
+        log.debug('Bootstrap started')
+        node_infos=await self.initial_bootstrap(bootstrap_nodes)
+        best = inf
 
         found_better = True
         while found_better:
