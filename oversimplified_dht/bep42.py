@@ -52,7 +52,7 @@ def gen_id(ip: str, rand: int):
     node_id[0] = (crc >> 24) & 0xff
     node_id[1] = (crc >> 16) & 0xff
     node_id[2] = ((crc >> 8) & 0xf8) | random.randint(0, 7)
-    node_id[3:19] = urandom(17)
+    node_id[3:19] = urandom(16)
     node_id[19] = rand
     return bytes(node_id)
 
