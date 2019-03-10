@@ -1,4 +1,6 @@
 import unittest
+from functools import partial
+from operator import is_not
 
 from oversimplified_dht import bep42
 
@@ -30,6 +32,20 @@ class Bep42TestCase(unittest.TestCase):
         )
         for ip, node_id in data:
             self.assertTrue(bep42.verify_id(ip, node_id), '%s not ok with %s' % (ip, node_id))
+
+
+class SecureIDManagerTestCase(unittest.TestCase):
+    def test(self):
+        s = bep42.Bep42SecureIDManager()
+        self.assertEqual(
+            len(
+                list(filter(partial(is_not, None),
+                            (s.record_ip('127.0.0.1') for _ in range(s.VOTES_NEEDED * 2))
+                            )
+                     )
+            ),
+            1
+        )
 
 
 if __name__ == '__main__':

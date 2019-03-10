@@ -3,6 +3,42 @@ import socket
 from crc32c import crc32 as crc32c
 from os import urandom
 
+from .node_id import NodeId
+
+
+class Bep42SecureIDManager:
+    VOTES_NEEDED = 2
+
+    def __init__(self):
+        """
+        When the number of nodes that responded with the same ip parameters exceedes VOTES_NEEDED,
+        will call change_id_cb.
+        :param change_id_cb:
+        """
+        self.ip = None
+        self.number_votes = 0
+
+    def record_ip(self, ip):
+        """
+
+        :param ip:
+        :return: NodeId if id needs changing, otherwise None
+        """
+        if ip == self.ip:
+            if self.number_votes < self.VOTES_NEEDED:
+                self.number_votes += 1
+                if self.number_votes >= self.VOTES_NEEDED:
+                    node_id = NodeId.from_bytes(gen_id(self.ip, random.randint(0, 100)))
+                    print('Restarting node, our new ip is %s and our new id is %s' % (self.ip, node_id))
+                    return node_id
+        else:
+            self.ip = ip
+            self.number_votes = 0
+
+    @staticmethod
+    def verify(ip, node_id: NodeId):
+        verify_id(ip, bytes(node_id))
+
 
 def gen_id(ip: str, rand: int):
     ip = bytearray(socket.inet_aton(ip))

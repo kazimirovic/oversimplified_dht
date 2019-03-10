@@ -1,11 +1,13 @@
 import asyncio
 import logging
 import typing
+from functools import wraps
 from math import inf
 from typing import Sequence, Tuple
 
 from bencode.misc import unpack_compact_peer
 
+from oversimplified_dht.bep42 import Bep42SecureIDManager
 from oversimplified_dht.peer_storage import LocalPeerStorage
 from oversimplified_dht.routing_table.table import RoutingTable
 from oversimplified_dht.token_manager import TokenManager
@@ -20,6 +22,21 @@ logging.basicConfig()
 
 class BootStrapError(Exception):
     pass
+
+
+class NodeIdChanged(Exception):
+    pass
+
+
+def abort_silently_on_id_change(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except NodeIdChanged:
+            pass
+
+    return wrapper
 
 
 class Router(KRPCProtocol):
@@ -106,6 +123,7 @@ class Router(KRPCProtocol):
         else:
             raise BootStrapError("No given boostrap nodes responded")
 
+    @abort_silently_on_id_change
     async def bootstrap(self, bootstrap_nodes: Sequence[Tuple[str, int]] = DEFAULT_BOOTSTRAP_NODES):
         """
         Issues find_node messages to closer and closer nodes until it cannot find any closer.
@@ -118,7 +136,7 @@ class Router(KRPCProtocol):
             b'target': bytes(self.node_id)
         }
         log.debug('Bootstrap started')
-        node_infos=await self.initial_bootstrap(bootstrap_nodes)
+        node_infos = await self.initial_bootstrap(bootstrap_nodes)
         best = inf
 
         found_better = True
@@ -135,6 +153,10 @@ class Router(KRPCProtocol):
                     result = await request
                 except asyncio.TimeoutError:
                     continue
+                except NodeIdChanged:
+                    print(5)
+                    await self.bootstrap()
+                    return
                 try:
                     node_infos += parse_compact_nodes(result[b'r'][b'nodes'])
                 except KeyError:
@@ -170,7 +192,7 @@ class Router(KRPCProtocol):
     def __init__(self, node_id: NodeId):
         super().__init__()
         self.node_id = node_id
-
+        self.secure_id_manager = Bep42SecureIDManager()
         self.peer_storage = LocalPeerStorage()
         self.routing_table = RoutingTable(self.node_id)
         self.token_manager = TokenManager()
@@ -188,7 +210,26 @@ class Router(KRPCProtocol):
                                               self.TIMEOUT)
         except asyncio.TimeoutError:
             node.record_not_responding()
-            raise asyncio.TimeoutError
+            raise
         else:
             node.record_responded()
+            if b'ip' in response:
+                node_id = self.secure_id_manager.record_ip(unpack_compact_peer(response[b'ip'])[0])
+                if node_id is not None:
+                    self.change_id(node_id)
+                    raise NodeIdChanged
+
             return response
+
+    def change_id(self, node_id: NodeId):
+        """
+        Changes id to :param node_id: and creates a new routing table.
+        IDEA: reuse known nodes from the old routing table maybe?
+        :return:
+        """
+        print('111111111111111')
+        self.node_id = node_id
+        self.routing_table = RoutingTable(node_id)
+
+        # asyncio.create_task(self.bootstrap())
+        asyncio.get_running_loop().call_later(1, self.bootstrap)
