@@ -11,9 +11,10 @@ What works:
 
 Planned features:
 -----------------
-- Save the routing table between program invocations
+- `DHT Security extension <http://www.bittorrent.org/beps/bep_0042.html>`_ (in progress)
+- Saving the routing table between program invocations
 - General compliance with `BEP5 <http://www.bittorrent.org/beps/bep_0005.html>`_
-- (Eventually) `DHT Security extension <http://www.bittorrent.org/beps/bep_0042.html>`_
+
 
 
 Usage:
