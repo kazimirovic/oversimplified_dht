@@ -22,6 +22,8 @@ class Bep42TestCase(unittest.TestCase):
             self.assertEqual(id_[2] & 0xf8, prefixes[2] & 0xf8)
             self.assertEqual(id_[19], rand)
 
+            self.assertEqual(len(id_), 20)
+
     def test_verify_id(self):
         data = (
             ("124.31.75.21", b'_\xbf\xbd\x03m\x1b\x85cY\x0b\x0e\xb5\x8d.\x96\xefV\xedN\x01\x00'),
