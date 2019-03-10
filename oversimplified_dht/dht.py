@@ -107,10 +107,15 @@ class Router(KRPCProtocol):
             timeout=timeout
         )
 
-    async def initial_bootstrap(self, bootstrap_nodes):
+    async def initial_bootstrap(self, bootstrap_nodes: Sequence[Tuple[str, int]] = DEFAULT_BOOTSTRAP_NODES,
+                                target: typing.Union[NodeId, None] = None):
+        """
+        Ask :param bootstrap_nodes: for nodes with id :param target:
+        :return:
+        """
         request_args = {
             b'id': bytes(self.node_id),
-            b'target': bytes(self.node_id)
+            b'target': bytes(target) if target is not None else bytes(self.node_id)
         }
         # find a working bootstrap node
         for bootstrap_node_address in bootstrap_nodes:
