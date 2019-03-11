@@ -40,6 +40,7 @@ class TableTraverser:
 
         raise StopIteration
 
+
 class RoutingTable:
     MINIMUM = 0
     MAXIMUM = 2 ** 160
