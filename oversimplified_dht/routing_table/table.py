@@ -119,3 +119,6 @@ class RoutingTable:
                 bucket.replace_node(questionable_node.id, node)
                 return True
         return False
+
+    def __repr__(self):
+        return "<RoutingTable: %s>" % ','.join(str(len(bucket)) for bucket in self.buckets)
