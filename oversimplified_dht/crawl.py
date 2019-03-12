@@ -1,9 +1,9 @@
 import asyncio
 import logging
 from math import inf
-from typing import Callable, List, Awaitable
+from typing import Callable, List, Tuple, Any
 
-from oversimplified_dht.node import NodeInfo, Node, NodeId
+from oversimplified_dht.node import Node, NodeId
 
 log = logging.getLogger(__name__)
 log.setLevel(logging.DEBUG)
@@ -11,15 +11,48 @@ logging.basicConfig()
 
 
 class NodeCrawler:
-    def __init__(self,
-                 find_node_call: Callable[[Node, NodeId], Awaitable[List[NodeInfo]]],
-                 nodes: List[Node],
-                 target: NodeId, add_node_cb: Callable[[Node], None]):
-        self.find_node = find_node_call
-        self.target = target
+    def __init__(self, rpc_find, nodes: List[Node], target: NodeId, add_node: Callable[[Node], None]):
+        self.rpc_find = rpc_find
         self.nodes = nodes
-        self.add_node = add_node_cb
+        self.target = target
+        self.add_node = add_node
         self._best = inf
+
+    def found_peers(self, peer_infos: List[Tuple[Any]]):
+        """
+        Called when peer infos are encountered
+        :param peer_infos:
+        :return:
+        """
+
+    async def run(self):
+        while True:
+            node_infos = []
+            results = await asyncio.gather(*(
+                self.rpc_find(node, self.target) for node in self.nodes
+            ), return_exceptions=True)
+
+            for r, node in zip(results, self.nodes):
+                if isinstance(r, Exception):
+                    if isinstance(r, (asyncio.TimeoutError, KeyError)):
+                        continue
+                    raise r
+
+                self.add_node(node)
+
+                new_node_infos, peer_infos = r
+                if peer_infos:
+                    self.found_peers(peer_infos)
+
+                node_infos += new_node_infos
+
+            log.debug('Got new node infos: %s' % node_infos)
+            node_infos = sorted(node_infos, key=lambda x: x.id ^ self.target)[:8]
+            if not node_infos:
+                return
+            if not self._better(node_infos[0].id):
+                return
+            self.nodes = [Node(info) for info in node_infos]
 
     def _better(self, value: NodeId):
         distance = self.target ^ value
@@ -29,32 +62,11 @@ class NodeCrawler:
         else:
             return False
 
-    async def run(self):
-        node_infos = await self.find_node(self.nodes[0], self.target)
-        while True:
-            new_node_infos = []
-            requests = []
-            nodes = []
-            for info in node_infos:
-                node = Node(info)
-                requests.append(self.find_node(node, self.target))
-                nodes.append(node)
 
-            results = await asyncio.gather(*requests, return_exceptions=True)
-            for r, node in zip(results, nodes):
-                if isinstance(r, Exception):
-                    if isinstance(r, asyncio.TimeoutError):
-                        continue
-                    if isinstance(r, KeyError):
-                        continue
-                    raise r
-                self.add_node(node)
+class ValueCrawler(NodeCrawler):
+    def __init__(self, rpc_find, nodes: List[Node], target: NodeId, add_node: Callable[[Node], None]):
+        super().__init__(rpc_find, nodes, target, add_node)
+        self.peers = []
 
-                new_node_infos += r
-
-            log.debug('Got new node infos: %s' % node_infos)
-            node_infos = sorted(new_node_infos, key=lambda x: x.id ^ self.target)[:8]
-            if not node_infos:
-                return
-            if not self._better(node_infos[0].id):
-                return
+    def found_peers(self, peer_infos: List[Tuple]):
+        self.peers.append(peer_infos)
