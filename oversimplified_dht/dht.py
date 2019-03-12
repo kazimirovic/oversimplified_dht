@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 import typing
 from typing import Sequence
 
@@ -90,7 +91,7 @@ class Router(KRPCProtocol):
 
     # noinspection PyMethodOverriding
     @classmethod
-    async def create(cls, node_id, port=49001) -> 'Router':
+    async def create(cls, node_id=None, port=49001) -> 'Router':
         _, protocol = await asyncio.get_running_loop().create_datagram_endpoint(lambda: cls(node_id),
                                                                                 local_addr=('0.0.0.0', port))
         # noinspection PyTypeChecker
@@ -100,9 +101,9 @@ class Router(KRPCProtocol):
     def krpc_handle_ping(self, request, address):
         return self.response(request, {b'id': bytes(self.node_id), })
 
-    def __init__(self, node_id: NodeId):
+    def __init__(self, node_id: NodeId = None):
         super().__init__()
-        self.node_id = node_id
+        self.node_id = NodeId.from_bytes(os.urandom(20)) if node_id is None else node_id
         self.secure_id_manager = Bep42SecureIDManager()
         self.peer_storage = LocalPeerStorage()
         self.routing_table = RoutingTable(self.node_id)
@@ -162,6 +163,6 @@ class Router(KRPCProtocol):
         if b'values' in r:
             peers = [unpack_compact_peer(p) for p in r[b'values']]
         else:
-            peers=None
+            peers = None
 
         return infos, peers
