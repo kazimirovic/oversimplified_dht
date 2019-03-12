@@ -1,1 +1,2 @@
 crc32c
+torrent-bencode
